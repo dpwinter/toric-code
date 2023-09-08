@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 from common import pdist, pdir
 from mwpm import MWPM
 
@@ -75,13 +77,47 @@ class ToricCode:
         return self.qubits[0,:,1].sum() % 2 == 1 or self.qubits[:,0,0].sum() % 2 == 1
 
 if __name__ == '__main__':
-    t = ToricCode(3)
-    t.step(p=0.2)
-    print(t)
-    print('\n')
-    matchings = MWPM.decode(t.stabs)
-    for a,b in matchings:
-        t.join(a,b)
-    t.update_stabs()
-    print(t)
-    print(t.check_log_err())
+
+    # test threshold
+
+    Ls = [4,8,12]
+    ps = np.linspace(0.08, 0.12, 5)
+    N = 5000
+
+    counts = np.zeros((len(Ls),len(ps)))
+    for i,L in enumerate(Ls):
+        print(f"- L={L}")
+        for j,p in enumerate(ps):
+            print(f"-- p={p}")
+            for n in range(N):
+                t = ToricCode(L)
+                t.step(p)
+                matchings = MWPM.decode(t.stabs)
+                for a,b in matchings:
+                    t.join(a,b)
+                counts[i,j] += int(t.check_log_err())
+
+    ys = counts / N # mean
+    ys_err = np.sqrt( ys * (1-ys) / N ) # MC std (Wald) of Bernoulli r.v.
+
+    for y,yerr in zip(ys,ys_err):
+        plt.errorbar(ps,y,yerr=yerr)
+
+    plt.legend(Ls)
+    plt.yscale('log')
+    plt.xlabel(r'phys. error rate $p$')
+    plt.ylabel(r'log. error rate $p_L$')
+    plt.title(f'Toric code (L={L}), N={N} samples per point')
+    plt.savefig('./thresholds.png', dpi=300)
+
+# if __name__ == '__main__':
+#     t = ToricCode(3)
+#     t.step(p=0.2)
+#     print(t)
+#     print('\n')
+#     matchings = MWPM.decode(t.stabs)
+#     for a,b in matchings:
+#         t.join(a,b)
+#     t.update_stabs()
+#     print(t)
+#     print(t.check_log_err())
